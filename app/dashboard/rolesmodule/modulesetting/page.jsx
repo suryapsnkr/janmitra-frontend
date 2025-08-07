@@ -1,281 +1,254 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import { useEffect, useState } from 'react';
 
-export default function ModuleSettingPage() {
-    const [form, setForm] = useState({
-        moduleName: "",
-        controllerName: "",
-        iconName: "",
-        operations: "",
+export default function ModulePage() {
+  const [modules, setModules] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    moduleName: '',
+    controllerName: '',
+    iconName: '',
+    operations: '',
+    status: 'Active',
+  });
+  const [editId, setEditId] = useState(null);
+
+  // ✅ Get token
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  // ✅ Fetch modules
+  const fetchModules = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/modules', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to fetch modules');
+      const data = await res.json();
+      setModules(data.reverse()); // newest first
+    } catch (err) {
+      console.error('Fetch error:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  // ✅ Add or Edit module
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      ...formData,
+      operations: formData.operations.split(',').map(op => op.trim()),
+    };
+
+    const url = editId
+      ? `http://localhost:5000/api/modules/${editId}`
+      : 'http://localhost:5000/api/modules';
+
+    const method = editId ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('Submit failed');
+      await fetchModules();
+      setShowModal(false);
+      setFormData({
+        moduleName: '',
+        controllerName: '',
+        iconName: '',
+        operations: '',
+        status: 'Active',
+      });
+      setEditId(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ Delete module
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this module?')) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/modules/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Delete failed');
+      fetchModules();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ Open modal for edit
+  const openEdit = (mod) => {
+    setEditId(mod._id);
+    setFormData({
+      moduleName: mod.moduleName,
+      controllerName: mod.controllerName,
+      iconName: mod.iconName,
+      operations: mod.operations.join(', '),
+      status: mod.status,
     });
+    setShowModal(true);
+  };
 
-    const [modules, setModules] = useState([
-        {
-            id: 1,
-            moduleName: "Dashboard",
-            controllerName: "Index",
-            iconName: "fas fa-home",
-            operations: "access",
-            createdAt: "28-Dec-2021",
-        },
-        {
-            id: 2,
-            moduleName: "Role & Module",
-            controllerName: "RoleController",
-            iconName: "fas fa-truck",
-            operations: "access|view|add|edit",
-            createdAt: "28-Dec-2021",
-        },
-        {
-            id: 3,
-            moduleName: "Orders",
-            controllerName: "Order",
-            iconName: "fas fa-truck",
-            operations: "access|dispatch|reject|delivered",
-            createdAt: "28-Dec-2021",
-        },
-    ]);
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold text-black">Manage Modules</h2>
+        <button
+          onClick={() => {
+            setFormData({
+              moduleName: '',
+              controllerName: '',
+              iconName: '',
+              operations: '',
+              status: 'Active',
+            });
+            setEditId(null);
+            setShowModal(true);
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+        >
+          + Add Module
+        </button>
+      </div>
 
-    const [openMenuId, setOpenMenuId] = useState(null);
-    const [editingModule, setEditingModule] = useState(null);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleDelete = (id) => {
-        if (confirm("Are you sure you want to delete this module?")) {
-            setModules(modules.filter((mod) => mod.id !== id));
-            setOpenMenuId(null);
-        }
-    };
-
-    const handleEdit = (mod) => {
-        setEditingModule(mod);
-        setIsEditModalOpen(true);
-        setOpenMenuId(null);
-    };
-
-    const handleUpdate = () => {
-        setModules((prev) =>
-            prev.map((m) =>
-                m.id === editingModule.id ? editingModule : m
-            )
-        );
-        setIsEditModalOpen(false);
-    };
-
-    const handleEditInputChange = (e) => {
-        const { name, value } = e.target;
-        setEditingModule((prev) => ({ ...prev, [name]: value }));
-    };
-
-    return (
-        <div className="p-6 space-y-6">
-            <h1 className="text-xl font-semibold">Module Setup</h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input
-                    name="moduleName"
-                    value={form.moduleName}
-                    onChange={handleChange}
-                    placeholder="Modules Name Menu/Nav bar Name"
-                    className="border p-2 rounded"
-                />
-                <input
-                    name="controllerName"
-                    value={form.controllerName}
-                    onChange={handleChange}
-                    placeholder="Controller Name"
-                    className="border p-2 rounded"
-                />
-                <input
-                    name="iconName"
-                    value={form.iconName}
-                    onChange={handleChange}
-                    placeholder="Icon Name"
-                    className="border p-2 rounded"
-                />
-                <input
-                    name="operations"
-                    value={form.operations}
-                    onChange={handleChange}
-                    placeholder="Operations Access for view,edit,delete,add"
-                    className="border p-2 rounded"
-                />
-            </div>
-
-            <button
-                className="bg-green-600 text-white px-4 py-2 rounded mt-2"
-                onClick={() => {
-                    const { moduleName, controllerName, iconName, operations } = form;
-                    if (!moduleName || !controllerName || !operations) {
-                        alert("Module Name, Controller Name, and Operations are required.");
-                        return;
-                    }
-
-                    const newModule = {
-                        id: modules.length + 1,
-                        moduleName,
-                        controllerName,
-                        iconName,
-                        operations,
-                        createdAt: new Date().toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                        }),
-                    };
-
-                    setModules([...modules, newModule]);
-                    setForm({
-                        moduleName: "",
-                        controllerName: "",
-                        iconName: "",
-                        operations: "",
-                    });
-                }}
-            >
-                Add Module
-            </button>
-
-
-            <div className="mt-6 border rounded shadow overflow-x-auto">
-                <table className="w-full table-auto text-sm">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="p-2 border">Sr. No.</th>
-                            <th className="p-2 border">Module Name</th>
-                            <th className="p-2 border">Controller Name</th>
-                            <th className="p-2 border">Icon Name</th>
-                            <th className="p-2 border">Operation</th>
-                            <th className="p-2 border">Create Date</th>
-                            <th className="p-2 border">Status</th>
-                            <th className="p-2 border">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {modules.map((mod, index) => (
-                            <tr key={mod.id} className="text-center relative">
-                                <td className="border p-2">{index + 1}</td>
-                                <td className="border p-2">{mod.moduleName}</td>
-                                <td className="border p-2">{mod.controllerName}</td>
-                                <td className="border p-2">{mod.iconName}</td>
-                                <td className="border p-2">{mod.operations}</td>
-                                <td className="border p-2">{mod.createdAt}</td>
-                                <td className="border p-2">
-                                    <span className="inline-block w-3 h-3 rounded-full bg-green-500"></span>
-                                </td>
-                                <td className="border p-2">
-                                    <button
-                                        onClick={() =>
-                                            setOpenMenuId(openMenuId === mod.id ? null : mod.id)
-                                        }
-                                        className="bg-yellow-400 text-white px-2 py-1 rounded"
-                                    >
-                                        ...
-                                    </button>
-
-                                    {openMenuId === mod.id && (
-                                        <div className="absolute z-10 right-0 mt-1 bg-white border shadow-md rounded w-28">
-                                            <button
-                                                onClick={() => handleEdit(mod)}
-                                                className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(mod.id)}
-                                                className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <div className="p-2 text-sm text-gray-600">
-                    Showing 1 to {modules.length} of {modules.length} entries
-                </div>
-            </div>
-
-            {/* Edit Modal */}
-            {isEditModalOpen && editingModule && (
-                <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
-                        <h2 className="text-lg font-semibold mb-4">Update Module</h2>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium">
-                                    Modules Name Manu/Nav bar Name
-                                </label>
-                                <input
-                                    name="moduleName"
-                                    value={editingModule.moduleName}
-                                    onChange={handleEditInputChange}
-                                    className="w-full border rounded px-3 py-2"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium">
-                                    Controller Name *
-                                </label>
-                                <input
-                                    name="controllerName"
-                                    value={editingModule.controllerName}
-                                    onChange={handleEditInputChange}
-                                    className="w-full border rounded px-3 py-2"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium">Icon</label>
-                                <input
-                                    name="iconName"
-                                    value={editingModule.iconName}
-                                    onChange={handleEditInputChange}
-                                    className="w-full border rounded px-3 py-2"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium">
-                                    Operations Access
-                                </label>
-                                <input
-                                    name="operations"
-                                    value={editingModule.operations}
-                                    onChange={handleEditInputChange}
-                                    className="w-full border rounded px-3 py-2"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end mt-6 gap-2">
-                            <button
-                                className="px-4 py-2 border rounded"
-                                onClick={() => setIsEditModalOpen(false)}
-                            >
-                                Close
-                            </button>
-                            <button
-                                className="px-4 py-2 bg-green-600 text-white rounded"
-                                onClick={handleUpdate}
-                            >
-                                Update
-                            </button>
-                        </div>
-                    </div>
-                </div>
+      {/* Table */}
+      <div className="overflow-auto border rounded-lg">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-gray-100 font-medium text-gray-700">
+            <tr>
+              <th className="px-4 py-2">Module Name</th>
+              <th className="px-4 py-2">Controller</th>
+              <th className="px-4 py-2">Icon</th>
+              <th className="px-4 py-2">Operations</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {modules.map((mod) => (
+              <tr key={mod._id} className="border-t hover:bg-gray-50">
+                <td className="px-4 py-2 text-black">{mod.moduleName}</td>
+                <td className="px-4 py-2 text-black">{mod.controllerName}</td>
+                <td className="px-4 py-2 text-black">{mod.iconName}</td>
+                <td className="px-4 py-2 text-black">{mod.operations?.join(', ')}</td>
+                <td className="px-4 py-2 text-black">{mod.status}</td>
+                <td className="px-4 py-2 space-x-2">
+                  <button
+                    onClick={() => openEdit(mod)}
+                    className="px-3 py-1 text-sm bg-green-600 text-white rounded"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(mod._id)}
+                    className="px-3 py-1 text-sm bg-red-600 text-white rounded"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {modules.length === 0 && (
+              <tr>
+                <td colSpan="6" className="text-center px-4 py-6 text-gray-500">
+                  No modules found.
+                </td>
+              </tr>
             )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40">
+          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4">
+              {editId ? 'Edit Module' : 'Add Module'}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Module Name"
+                value={formData.moduleName}
+                onChange={(e) => setFormData({ ...formData, moduleName: e.target.value })}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Controller Name"
+                value={formData.controllerName}
+                onChange={(e) => setFormData({ ...formData, controllerName: e.target.value })}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Icon Name"
+                value={formData.iconName}
+                onChange={(e) => setFormData({ ...formData, iconName: e.target.value })}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
+              <input
+                type="text"
+                placeholder="Operations (comma separated)"
+                value={formData.operations}
+                onChange={(e) => setFormData({ ...formData, operations: e.target.value })}
+                required
+                className="w-full border px-3 py-2 rounded"
+              />
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full border px-3 py-2 rounded"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditId(null);
+                  }}
+                  className="px-4 py-2 bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">
+                  {editId ? 'Update' : 'Add'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }

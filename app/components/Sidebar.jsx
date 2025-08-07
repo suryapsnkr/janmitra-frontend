@@ -11,7 +11,7 @@ import { GiHelp } from 'react-icons/gi';
 export default function Sidebar({ isOpen, toggleSidebar }) {
     const [openMenus, setOpenMenus] = useState({});
 
-    const menuItems = [
+        const menuItems = [
         {
             name: 'Role & Module',
             icon: <FaTruck className="mr-2 text-blue-600" />,
@@ -133,41 +133,39 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
     return (
         <aside
-            className={`fixed z-50 top-0 left-0 h-full bg-white shadow-lg overflow-y-auto transition-transform transform duration-300
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'} w-64 md:static md:translate-x-0 md:block`}
+            className={`fixed z-50 top-0 left-0 h-full bg-white shadow-lg overflow-y-auto transition-transform duration-300
+            ${isOpen ? 'translate-x-0' : '-translate-x-full'} w-64 md:static md:translate-x-0 md:block`}
         >
-            <div className="flex justify-between items-center px-4 py-3 border-b">
-                <h2 className="text-lg font-bold">जनमित्र</h2><Link href="/">
-                    <span className="block px-2 py-1 text-gray-700 rounded hover:bg-gray-200">
-                        Dashboard
-                    </span>
-                </Link>
+            <div className="flex justify-between items-center px-5 py-4 border-b bg-gray-100">
+                <h2 className="text-xl font-semibold text-blue-700">जनमित्र</h2>
                 <button onClick={toggleSidebar} className="text-gray-500 md:hidden">
-                    <FiMenu size={20} />
+                    <FiMenu size={22} />
                 </button>
             </div>
 
-            <nav className="px-4 py-2 text-sm space-y-2">
+            <nav className="px-4 py-3 space-y-2 text-sm">
                 {menuItems.map((item) => (
-                    <div key={item.name}>
+                    <div key={item.name} className="group">
                         <button
                             onClick={() => toggleMenu(item.name)}
-                            className="flex items-center justify-between w-full py-2 rounded hover:bg-gray-100"
+                            className="flex items-center justify-between w-full px-3 py-2 rounded-md hover:bg-blue-50 text-gray-800 font-medium transition"
                         >
-                            <span className="flex items-center">
+                            <span className="flex items-center space-x-2">
                                 {item.icon}
-                                {item.name}
+                                <span>{item.name}</span>
                             </span>
                             <FiChevronDown
-                                className={`transition-transform ${openMenus[item.name] ? 'rotate-180' : ''}`}
+                                className={`transition-transform text-gray-500 ${
+                                    openMenus[item.name] ? 'rotate-180' : ''
+                                }`}
                             />
                         </button>
 
                         {openMenus[item.name] && (
-                            <div className="ml-4 space-y-1">
+                            <div className="ml-5 mt-1 space-y-1 border-l border-gray-200 pl-3">
                                 {item.children.map((child) => (
                                     <Link key={child.name} href={child.path}>
-                                        <span className="block px-2 py-1 text-gray-700 rounded hover:bg-gray-200">
+                                        <span className="block px-2 py-1 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600 cursor-pointer transition">
                                             {child.name}
                                         </span>
                                     </Link>

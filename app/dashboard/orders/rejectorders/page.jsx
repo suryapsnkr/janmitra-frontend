@@ -1,63 +1,69 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function RejectOrders() {
   const [search, setSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [rejectedOrders, setRejectedOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const rejectedOrders = [
-    {
-      orderId: '07849722452434244118',
-      memberName: 'Dr.Aparna kumari',
-      kendraName: 'JANMITRAM-6',
-      address: 'nheje',
-      createDate: '29 Aug 2023 , 05:23 pm',
-      status: 'Rejected',
-    },
-    {
-      orderId: '05826845454394755935',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-2',
-      address: '281',
-      createDate: '16 Sep 2023 , 11:27 am',
-      status: 'Rejected',
-    },
-    {
-      orderId: '02468662543498424698',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-6',
-      address: 'full address',
-      createDate: '13 Dec 2023 , 07:07 pm',
-      status: 'Rejected',
-    },
-    {
-      orderId: '05572543932363653131',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-2',
-      address: '281',
-      createDate: '13 Dec 2023 , 07:47 pm',
-      status: 'Rejected',
-    },
-    {
-      orderId: '04687178934333432747',
-      memberName: 'Manoj Kumar',
-      kendraName: 'JANMITRAM-2',
-      address: '173/281',
-      createDate: '17 Dec 2023 , 07:11 pm',
-      status: 'Rejected',
-    },
-  ];
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
 
-  const filteredOrders = rejectedOrders.filter(order =>
+  useEffect(() => {
+    const fetchRejectedOrders = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/orders', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error('Failed to fetch orders');
+
+        const data = await res.json();
+
+        const rejected = data
+          .filter((order) => order.status === 'Rejected')
+          .map((order) => ({
+            orderId: order._id,
+            memberName: order.memberId?.name || 'N/A',
+            kendraName: '-', // Update if available
+            address: '-', // Update if available
+            createDate: new Date(order.createdAt).toLocaleString(),
+            status: order.status,
+            items: order.products.map((product) => ({
+              name: product.productId.name,
+              unit: '-', // Add if your API has unit info
+              quantity: product.quantity,
+              price: product.productId.price,
+            })),
+          }));
+
+        setRejectedOrders(rejected);
+      } catch (error) {
+        console.error('Error loading rejected orders:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRejectedOrders();
+  }, []);
+
+  const filteredOrders = rejectedOrders.filter((order) =>
     order.orderId.includes(search) || order.memberName.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return <div className="p-4 text-gray-500">Loading rejected orders...</div>;
+  }
 
   return (
     <div className="p-4">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 text-black">
         <h1 className="text-xl font-semibold">Reject Orders</h1>
         <div className="text-sm text-gray-500">
           Jan Mitra / <span className="text-blue-600">Reject Orders</span>
@@ -65,7 +71,7 @@ export default function RejectOrders() {
       </div>
 
       {/* Card */}
-      <div className="bg-white shadow-md rounded p-4">
+      <div className="bg-white shadow-md rounded p-4 text-black">
         <div className="flex justify-between items-center mb-4">
           <div>
             <label className="mr-2">Show</label>
@@ -136,22 +142,6 @@ export default function RejectOrders() {
             )}
           </tbody>
         </table>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-4">
-          <div>
-            Showing 1 to {filteredOrders.length} of {filteredOrders.length} entries
-          </div>
-          <div className="flex items-center gap-1">
-            <button className="px-3 py-1 bg-white border rounded text-gray-400 cursor-not-allowed" disabled>
-              Previous
-            </button>
-            <button className="px-3 py-1 bg-blue-500 text-white rounded">1</button>
-            <button className="px-3 py-1 bg-white border rounded text-gray-400 cursor-not-allowed" disabled>
-              Next
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* Modal */}
@@ -176,7 +166,7 @@ export default function RejectOrders() {
               <h3 className="font-semibold text-md">Billed To:</h3>
               <p className="text-sm">{selectedOrder.memberName}</p>
               <p className="text-sm">{selectedOrder.address}</p>
-              <p className="text-sm">janmitram78000@gmail.com</p>
+              <p className="text-sm">janmitra78000@gmail.com</p>
               <p className="text-sm">9410457690</p>
             </div>
 
@@ -192,28 +182,35 @@ export default function RejectOrders() {
                 </tr>
               </thead>
               <tbody>
-                {/* Hardcoded data, you can replace it dynamically later */}
-                {[
-                  { item: 'Arhar Dal', unit: '1 Kg', qty: 5, price: 100.8 },
-                  { item: 'Mung Dal', unit: '1 Kg', qty: 4, price: 94.5 },
-                  { item: 'Basmati Rice', unit: '5 Kg', qty: 6, price: 315 },
-                ].map((prod, idx) => (
+                {selectedOrder.items.map((prod, idx) => (
                   <tr key={idx}>
                     <td className="border px-2 py-1">{idx + 1}</td>
-                    <td className="border px-2 py-1">{prod.item}</td>
+                    <td className="border px-2 py-1">{prod.name}</td>
                     <td className="border px-2 py-1">{prod.unit}</td>
-                    <td className="border px-2 py-1">{prod.qty}</td>
+                    <td className="border px-2 py-1">{prod.quantity}</td>
                     <td className="border px-2 py-1">₹{prod.price}</td>
-                    <td className="border px-2 py-1">₹{(prod.qty * prod.price).toFixed(2)}</td>
+                    <td className="border px-2 py-1">
+                      ₹{(prod.quantity * prod.price).toFixed(2)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
             <div className="text-right mt-4">
-              <p>Sub Total: ₹3389.4</p>
+              <p>
+                Sub Total: ₹
+                {selectedOrder.items
+                  .reduce((sum, i) => sum + i.price * i.quantity, 0)
+                  .toFixed(2)}
+              </p>
               <p>Discount: ₹0</p>
-              <p className="font-bold text-lg">Grand Total: ₹3389.4</p>
+              <p className="font-bold text-lg">
+                Grand Total: ₹
+                {selectedOrder.items
+                  .reduce((sum, i) => sum + i.price * i.quantity, 0)
+                  .toFixed(2)}
+              </p>
             </div>
           </div>
         </div>

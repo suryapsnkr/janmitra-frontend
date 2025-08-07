@@ -23,8 +23,9 @@ const metadata = {
 export default function RootLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [password, setPassword] = useState('');
+
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -47,14 +48,37 @@ export default function RootLayout({ children }) {
     setIsAuthenticated(false);
   };
 
-  const handleLogin = () => {
-    if (email === 'admin@example.com' && pass === '123456') {
-      localStorage.setItem('token', 'mock-token');
+  const handleLogin = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mobile: mobile,
+          password: password,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
+
+      const data = await response.json();
+
+      // Store token
+      localStorage.setItem('token', data.token);
+
+      // Optionally store user info
+      localStorage.setItem('user', JSON.stringify(data.user));
+
       setIsAuthenticated(true);
-    } else {
-      alert('Invalid credentials');
+    } catch (err) {
+      alert(err.message || 'Login failed');
     }
   };
+
 
   return (
     <html lang="en">
@@ -75,19 +99,20 @@ export default function RootLayout({ children }) {
             <div className="bg-white p-6 rounded shadow-md w-full max-w-sm">
               <h2 className="text-xl font-semibold mb-4 text-center">Admin Login</h2>
               <input
-                type="email"
-                placeholder="Email"
+                type="text"
+                placeholder="Mobile"
                 className="w-full border p-2 mb-3 rounded"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
               />
               <input
                 type="password"
                 placeholder="Password"
                 className="w-full border p-2 mb-3 rounded"
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
+
               <button
                 onClick={handleLogin}
                 className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition"

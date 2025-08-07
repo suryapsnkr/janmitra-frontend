@@ -1,41 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function LiveOrders() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
 
-  const orders = [
-    {
-      orderId: '08288724677827545238',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-2',
-      address: '281',
-      email: 'archana@gmail.com',
-      mobile: '7004113699',
-      createDate: '13 Dec 2023 , 07:02 pm',
-      paymentMethod: 'Online',
-      orderStatus: 'Placed',
-      items: [
-        { name: 'Sugar', unit: '1 Kg', quantity: 1, price: 47.25 },
-        { name: 'Arhar Dal', unit: '1 Kg', quantity: 3, price: 100.8 },
-        { name: 'Namak (Salt)', unit: '1 Kg', quantity: 7, price: 25.2 },
-        { name: 'Tea', unit: '500 Gm', quantity: 4, price: 252 },
-        { name: 'Sarson Ka Tel (kachchi Gani)', unit: '1 Litre', quantity: 2, price: 195.3 },
-        { name: 'ATTA (WHEAT)', unit: '5 Kg', quantity: 3, price: 236.25 },
-        { name: 'All In One Cleaner (special)', unit: '1 Litre', quantity: 3, price: 94.5 },
-        { name: 'Aloe Vera Gel', unit: '150ml', quantity: 1, price: 85.05 },
-        { name: 'Basmati Rice', unit: '5 Kg', quantity: 4, price: 315 },
-        { name: 'Mung Dal', unit: '1 Kg', quantity: 5, price: 94.5 },
-        { name: 'Chana Dal', unit: '1 Kg', quantity: 3, price: 81.9 }
-      ],
-      subTotal: 4980.15,
-      discount: 0,
-      grandTotal: 4980.15
-    }
-  ];
+
+    useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/orders', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch orders');
+
+        const data = await response.json();
+
+        // Transform data into your UI format
+        const transformed = data.map((order) => {
+          const items = order.products.map((product) => ({
+            name: product.productId.name,
+            unit: '-', // Add unit if available
+            quantity: product.quantity,
+            price: product.productId.price,
+          }));
+
+          const total = items.reduce((acc, item) => acc + item.quantity * item.price, 0);
+
+          return {
+            orderId: order._id,
+            memberName: order.memberId?.name || 'N/A',
+            kendraName: order.firmId?.firmName, // Add if available
+            address: '-', // Add if available
+            email: '-', // Add if available
+            mobile: '-', // Add if available
+            createDate: new Date(order.createdAt).toLocaleString(),
+            paymentMethod: order.paymentStatus,
+            orderStatus: order.status,
+            items,
+            subTotal: total,
+            discount: 0,
+            grandTotal: total,
+          };
+        });
+
+        setOrders(transformed);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   const filteredOrders = orders.filter(
     (order) =>
@@ -43,17 +69,21 @@ export default function LiveOrders() {
       order.memberName.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (loading) {
+    return <div className="p-4 text-gray-500">Loading orders...</div>;
+  }
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold">Live Orders</h1>
+        <h1 className="text-xl font-semibold text-black">Live Orders</h1>
         <div className="text-gray-500 text-sm">
           Jan Mitra / <span className="text-blue-600">Live Orders</span>
         </div>
       </div>
 
       <div className="bg-white shadow-md rounded p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 text-black">
           <div>
             <label className="mr-2">Show</label>
             <select className="border rounded px-2 py-1 text-sm">
@@ -92,7 +122,7 @@ export default function LiveOrders() {
           <tbody>
             {filteredOrders.map((order, index) => (
               <tr key={index} className="hover:bg-gray-50">
-                <td className="px-3 py-2 border">{index + 1}</td>
+                <td className="px-3 py-2 border text-black">{index + 1}</td>
                 <td className="px-3 py-2 border">
                   <button
                     onClick={() => {
@@ -104,11 +134,11 @@ export default function LiveOrders() {
                     {order.orderId}
                   </button>
                 </td>
-                <td className="px-3 py-2 border">{order.memberName}</td>
-                <td className="px-3 py-2 border">{order.kendraName}</td>
-                <td className="px-3 py-2 border">{order.address}</td>
-                <td className="px-3 py-2 border">{order.createDate}</td>
-                <td className="px-3 py-2 border">{order.paymentMethod}</td>
+                <td className="px-3 py-2 border text-black">{order.memberName}</td>
+                <td className="px-3 py-2 border text-black">{order.kendraName}</td>
+                <td className="px-3 py-2 border text-black">{order.address}</td>
+                <td className="px-3 py-2 border text-black">{order.createDate}</td>
+                <td className="px-3 py-2 border text-black">{order.paymentMethod}</td>
                 <td className="px-3 py-2 border">
                   <span className="bg-orange-100 text-orange-600 text-xs px-2 py-1 rounded-full">
                     {order.orderStatus}
@@ -135,7 +165,7 @@ export default function LiveOrders() {
         </table>
 
         <div className="flex justify-between items-center mt-4">
-          <div>
+          <div className="text-black">
             Showing 1 to {filteredOrders.length} of {filteredOrders.length} entries
           </div>
           <div className="flex gap-1 items-center">
@@ -155,13 +185,13 @@ export default function LiveOrders() {
             >
               &#x2715;
             </button>
-            <h2 className="text-xl font-bold mb-4">Order Details</h2>
-            <div className="mb-4">
+            <h2 className="text-xl font-bold mb-4 text-black">Order Details</h2>
+            <div className="mb-4 text-black">
               <p><strong>Order ID:</strong> {selectedOrder.orderId}</p>
               <p><strong>Order Date:</strong> {selectedOrder.createDate}</p>
               <p><strong>Status:</strong> {selectedOrder.orderStatus}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4 mb-4 text-black">
               <div>
                 <h3 className="font-semibold mb-1">Billed To:</h3>
                 <p>{selectedOrder.memberName}</p>
@@ -174,7 +204,7 @@ export default function LiveOrders() {
                 <p>{selectedOrder.kendraName}</p>
               </div>
             </div>
-            <table className="w-full text-sm border">
+            <table className="w-full text-sm border text-black">
               <thead className="bg-gray-100">
                 <tr>
                   <th className="border px-2 py-1">No.</th>
@@ -198,7 +228,7 @@ export default function LiveOrders() {
                 ))}
               </tbody>
             </table>
-            <div className="mt-4 text-right">
+            <div className="mt-4 text-right text-black">
               <p><strong>Sub Total:</strong> ₹{selectedOrder.subTotal}</p>
               <p><strong>Discount:</strong> ₹{selectedOrder.discount}</p>
               <p className="text-xl font-bold"><strong>Grand Total:</strong> ₹{selectedOrder.grandTotal}</p>

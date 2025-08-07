@@ -1,80 +1,79 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function PastOrders() {
   const [search, setSearch] = useState('');
-
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [pastOrders, setPastOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
 
-  const pastOrders = [
-    {
-      orderId: '01972373846663276668',
-      memberName: 'Dr.Aparna kumari',
-      kendraName: 'JANMITRAM-6',
-      address: 'nheje',
-      createDate: '29 Aug 2023 , 05:17 pm',
-      status: 'Delivered',
-    },
-    {
-      orderId: '04957851422266544692',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-6',
-      address: 'full address',
-      createDate: '16 Sep 2023 , 11:27 am',
-      status: 'Delivered',
-    },
-    {
-      orderId: '01354356837754273934',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-6',
-      address: 'full address',
-      createDate: '16 Sep 2023 , 11:29 am',
-      status: 'Delivered',
-    },
-    {
-      orderId: '04823575968844578358',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-6',
-      address: 'full address',
-      createDate: '13 Dec 2023 , 07:07 pm',
-      status: 'Delivered',
-    },
-    {
-      orderId: '06294977531321633445',
-      memberName: 'Manoj Kumar',
-      kendraName: 'JANMITRAM-2',
-      address: '173/281',
-      createDate: '07 Sep 2023 , 02:08 pm',
-      status: 'Delivered',
-    },
-    {
-      orderId: '0776723726485146858',
-      memberName: 'Archana Ojha',
-      kendraName: 'JANMITRAM-2',
-      address: '281',
-      createDate: '08 Sep 2023 , 06:16 pm',
-      status: 'Delivered',
-    },
-  ];
+  useEffect(() => {
+    const fetchPastOrders = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/orders', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-  const filteredOrders = pastOrders.filter(order =>
-    order.orderId.includes(search) || order.memberName.toLowerCase().includes(search.toLowerCase())
+        if (!res.ok) throw new Error('Failed to fetch orders');
+
+        const data = await res.json();
+
+        const deliveredOrders = data
+          .filter((order) => order.status === 'Delivered')
+          .map((order) => {
+            return {
+              orderId: order._id,
+              memberName: order.memberId?.name || 'N/A',
+              kendraName: '-', // You can enhance this later
+              address: '-', // You can enhance this later
+              createDate: new Date(order.createdAt).toLocaleString(),
+              status: order.status,
+              items: order.products.map((product) => ({
+                name: product.productId.name,
+                unit: '-', // Update if available
+                quantity: product.quantity,
+                price: product.productId.price,
+              })),
+            };
+          });
+
+        setPastOrders(deliveredOrders);
+      } catch (err) {
+        console.error('Error fetching past orders:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPastOrders();
+  }, []);
+
+  const filteredOrders = pastOrders.filter(
+    (order) =>
+      order.orderId.includes(search) ||
+      order.memberName.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return <div className="p-4 text-gray-500">Loading past orders...</div>;
+  }
 
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold">Past Orders</h1>
+        <h1 className="text-xl font-semibold text-black">Past Orders</h1>
         <div className="text-gray-500 text-sm">
           Jan Mitra / <span className="text-blue-600">Past Orders</span>
         </div>
       </div>
 
       <div className="bg-white shadow-md rounded p-4">
-        {/* Header Controls */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 text-black">
           <div>
             <label className="mr-2">Show</label>
             <select className="border rounded px-2 py-1 text-sm">
@@ -96,7 +95,6 @@ export default function PastOrders() {
           </div>
         </div>
 
-        {/* Orders Table */}
         <table className="min-w-full text-sm text-left border">
           <thead className="bg-gray-100 text-gray-700">
             <tr>
@@ -124,7 +122,6 @@ export default function PastOrders() {
                     {order.orderId}
                   </button>
                 </td>
-
                 <td className="px-3 py-2 border">{order.memberName}</td>
                 <td className="px-3 py-2 border">{order.kendraName}</td>
                 <td className="px-3 py-2 border">{order.address}</td>
@@ -145,29 +142,9 @@ export default function PastOrders() {
             )}
           </tbody>
         </table>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-4">
-          <div>
-            Showing 1 to {filteredOrders.length} of {filteredOrders.length} entries
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              disabled
-              className="px-3 py-1 bg-white border rounded text-gray-400 cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button className="px-3 py-1 bg-blue-500 text-white rounded">1</button>
-            <button
-              disabled
-              className="px-3 py-1 bg-white border rounded text-gray-400 cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </div>
+
+      {/* Modal for Selected Order */}
       {showModal && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg w-[90%] max-w-6xl p-6 overflow-y-auto max-h-[90vh] shadow-lg relative">
@@ -181,21 +158,19 @@ export default function PastOrders() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Order Detail</h2>
               <div className="text-sm text-right">
-                <div className="text-gray-600">Order Date: 29 Aug, 2023</div>
+                <div className="text-gray-600">Order Date: {selectedOrder.createDate}</div>
                 <div className="text-gray-600">Order ID: {selectedOrder.orderId}</div>
               </div>
             </div>
 
-            {/* Billed To Section */}
             <div className="mb-4">
               <h3 className="font-semibold">Billed To:</h3>
               <div>{selectedOrder.memberName}</div>
               <div>{selectedOrder.address}</div>
-              <div>jannmitra78000@gmail.com</div>
-              <div>9414057690</div>
+              <div>janmitra@example.com</div>
+              <div>+91-XXXXXXXXXX</div>
             </div>
 
-            {/* Order Summary Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm border">
                 <thead className="bg-gray-100">
@@ -209,40 +184,36 @@ export default function PastOrders() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Example static data */}
-                  {[
-                    { item: 'Chana Dal', unit: '1 Kg', qty: 3, price: 81.9 },
-                    { item: 'Sugar', unit: '1 Kg', qty: 3, price: 47.25 },
-                    { item: 'Namak (Salt)', unit: '1 Kg', qty: 3, price: 25.2 },
-                    { item: 'Tea', unit: '500 Gm', qty: 3, price: 252 },
-                    { item: 'Sarson Ka Tel (kachchi Gani)', unit: '1 Litre', qty: 4, price: 195.3 },
-                    { item: 'Basmati Rice', unit: '5 Kg', qty: 3, price: 315 },
-                    { item: 'Mung Dal', unit: '1 Kg', qty: 3, price: 94.5 },
-                    { item: 'Arhar Dal', unit: '1 Kg', qty: 2, price: 100.8 },
-                  ].map((product, i) => (
+                  {selectedOrder.items.map((item, i) => (
                     <tr key={i}>
                       <td className="border px-2 py-1">{i + 1}</td>
-                      <td className="border px-2 py-1">{product.item}</td>
-                      <td className="border px-2 py-1">{product.unit}</td>
-                      <td className="border px-2 py-1">{product.qty}</td>
-                      <td className="border px-2 py-1">₹ {product.price}</td>
-                      <td className="border px-2 py-1">₹ {(product.qty * product.price).toFixed(2)}</td>
+                      <td className="border px-2 py-1">{item.name}</td>
+                      <td className="border px-2 py-1">{item.unit}</td>
+                      <td className="border px-2 py-1">{item.quantity}</td>
+                      <td className="border px-2 py-1">₹ {item.price}</td>
+                      <td className="border px-2 py-1">
+                        ₹ {(item.price * item.quantity).toFixed(2)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Totals */}
             <div className="mt-4 text-right">
-              <div>Sub Total: ₹ 3430.35</div>
+              <div>
+                Sub Total: ₹{' '}
+                {selectedOrder.items.reduce((sum, i) => sum + i.price * i.quantity, 0).toFixed(2)}
+              </div>
               <div>Discount: ₹ 0</div>
-              <div className="font-bold text-lg">Grand Total: ₹ 3430.35</div>
+              <div className="font-bold text-lg">
+                Grand Total: ₹{' '}
+                {selectedOrder.items.reduce((sum, i) => sum + i.price * i.quantity, 0).toFixed(2)}
+              </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
